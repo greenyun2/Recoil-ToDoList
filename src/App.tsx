@@ -1,67 +1,79 @@
 import React from 'react';
-import { createGlobalStyle } from 'styled-components';
-import ToDoList from './components/ToDoList';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd'
+import styled from 'styled-components';
+import { useRecoilState } from 'recoil';
+import { toDoState } from './Atoms';
+import DraggableCard from './Components/DraggableCard';
+import Board from './Components/Board';
 
-const GlobalStyle = createGlobalStyle`
-@import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Source+Sans+3:wght@300;400&display=swap');
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed, 
-figure, figcaption, footer, header, hgroup, 
-menu, nav, output, ruby, section, summary,
-time, mark, audio, video {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	font-size: 100%;
-	font: inherit;
-	vertical-align: baseline;
-}
-article, aside, details, figcaption, figure, 
-footer, header, hgroup, menu, nav, section {
-	display: block;
-}
-body {
-	line-height: 1;
-}
-ol, ul {
-	list-style: none;
-}
-blockquote, q {
-	quotes: none;
-}
-blockquote:before, blockquote:after,
-q:before, q:after {
-	content: '';
-	content: none;
-}
-table {
-	border-collapse: collapse;
-	border-spacing: 0;
-}
-body {
-  font-family: 'Source Sans 3', sans-serif;
-}
-a {
-  text-decoration: none;
-}
+const Wrapper = styled.div`
+	display: flex;
+	max-width: 680px;
+	width: 100%;
+	margin: 0 auto;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+`;
+
+const Boards = styled.div`
+	display: grid;
+	width: 100%;
+	gap: 10px;
+	grid-template-columns: repeat(3, 1fr);
 `;
 
 
+
 function App() {
+	const [toDos, setToDos] = useRecoilState(toDoState);
+
+	const onDragEnd = (info: any) => {
+		const { destination, draggableId, source } = info;
+		console.log('info', info)
+		if(!destination) return;
+
+		if(destination.droppableId === source.droppableId) {
+			//같은 보드에서 움직이는 경우
+			setToDos((oldToDos) => {
+				const copyToDos = [...oldToDos[source.droppableId]];
+				const taskObj = copyToDos[source.index];
+				copyToDos.splice(source.index, 1);
+				copyToDos.splice(destination?.index, 0, taskObj);
+				return {
+					...oldToDos,
+					[source.droppableId]: copyToDos,
+				};
+		});
+		};
+
+		if(destination.droppableId !== source.droppableId) {
+			// 서로 다른 보드로 움직이는 경우
+			setToDos((oldToDos) => {
+				const sourceBoard = [...oldToDos[source.droppableId]];
+				const taskObj = sourceBoard[source.index];
+				const destinationBoard = [...oldToDos[destination.droppableId]]
+				sourceBoard.splice(source.index, 1);
+				destinationBoard.splice(destination?.index, 0, taskObj);
+				return {
+					...oldToDos,
+					[source.droppableId]: sourceBoard,
+					[destination.droppableId]: destinationBoard,
+				};
+		});
+		}
+	};
   return (
-    <>
-      <GlobalStyle />
-      <ToDoList />
-    </>
+    <DragDropContext onDragEnd={onDragEnd}>
+			<Wrapper>
+				<Boards>
+					{Object.keys(toDos).map((boardId) => (
+						<Board key={boardId} toDos={toDos[boardId]} boardId={boardId} />
+					))}
+				</Boards>
+			</Wrapper>
+    </DragDropContext>
   );
-}
+};
 
 export default App;
